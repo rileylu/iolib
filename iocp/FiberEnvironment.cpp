@@ -35,7 +35,7 @@ void FiberEnvironment::io_fun_()
 			jobs.push_front(context);
 		}
 		EnterCriticalSection(&running_cs_);
-		auto it = running_list_.begin();
+		auto it = running_list_.before_begin();
 		running_list_.splice_after(it, std::move(jobs));
 		empty_ = false;
 		LeaveCriticalSection(&running_cs_);
@@ -49,6 +49,7 @@ unsigned __stdcall FiberEnvironment::schedule_next_(PVOID args)
 	FiberEnvironment* fb = (FiberEnvironment*)args;
 	while (true)
 	{
+		::EnterCriticalSection(&fb->running_cs_);
 		while (fb->empty_)
 			::SleepConditionVariableCS(&fb->running_v_, &fb->running_cs_, INFINITE);
 		std::forward_list<Context*> copy_list(std::move(fb->running_list_));
