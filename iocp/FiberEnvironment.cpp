@@ -4,7 +4,7 @@
 
 IOCP* FiberEnvironment::iocp_ = nullptr;
 void* FiberEnvironment::block_context_ = nullptr;
-std::forward_list<void*> FiberEnvironment::finish_list_;
+std::list<void*> FiberEnvironment::finish_list_;
 
 FiberEnvironment::FiberEnvironment(int num)
 	:td_num_(num), empty_(true), block_thread_t_(INVALID_HANDLE_VALUE)
@@ -23,7 +23,7 @@ void FiberEnvironment::io_fun_()
 	BOOL bRet = false;
 	std::unique_ptr<OVERLAPPED_ENTRY[]> overlapped_entry_array(new OVERLAPPED_ENTRY[100]);
 	ULONG numEntriesRemoved = 0;
-	std::forward_list<Context*> jobs;
+	std::list<Context*> jobs;
 	while (true)
 	{
 		bRet = ::GetQueuedCompletionStatusEx(iocp_->get_handle(), overlapped_entry_array.get(), 100, &numEntriesRemoved, WSA_INFINITE, false);
@@ -32,11 +32,10 @@ void FiberEnvironment::io_fun_()
 			per_io_data = (Per_IO_Data*)overlapped_entry_array[i].lpOverlapped;
 			context = (Context*)overlapped_entry_array[i].lpCompletionKey;
 			context->io_data_->bytes_transferred = overlapped_entry_array[i].dwNumberOfBytesTransferred;
-			jobs.push_front(context);
+			jobs.emplace_back(context);
 		}
 		EnterCriticalSection(&running_cs_);
-		auto it = running_list_.before_begin();
-		running_list_.splice_after(it, std::move(jobs));
+		running_list_.splice(running_list_.end(), jobs);
 		empty_ = false;
 		LeaveCriticalSection(&running_cs_);
 		WakeConditionVariable(&running_v_);
@@ -52,7 +51,7 @@ unsigned __stdcall FiberEnvironment::schedule_next_(PVOID args)
 		::EnterCriticalSection(&fb->running_cs_);
 		while (fb->empty_)
 			::SleepConditionVariableCS(&fb->running_v_, &fb->running_cs_, INFINITE);
-		std::forward_list<Context*> copy_list(std::move(fb->running_list_));
+		std::list<Context*> copy_list(std::move(fb->running_list_));
 		fb->empty_ = true;
 		::LeaveCriticalSection(&fb->running_cs_);
 		std::for_each(copy_list.begin(), copy_list.end(), [](Context* ctx)

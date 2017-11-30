@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include "IOCP.h"
 #include <memory>
-#include <forward_list>
+#include <list>
 class FiberEnvironment
 {
 public:
@@ -48,6 +48,6 @@ private:
 	::CRITICAL_SECTION running_cs_;
 	::CONDITION_VARIABLE running_v_;
 	bool empty_;
-	std::forward_list<Context*> running_list_;
-	static std::forward_list<void*> finish_list_;
+	std::list<Context*> running_list_;
+	static std::list<void*> finish_list_;
 };

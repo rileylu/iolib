@@ -18,7 +18,7 @@ void fun()
 	fn.append(".txt");
 	HANDLE fd = fiber::fiber_open(fn.c_str(), GENERIC_WRITE, CREATE_ALWAYS);
 	res = fiber::fiber_write(fd, buf, res);
-	//::closesocket(s);
+	::closesocket(s);
 	::CloseHandle(fd);
 }
 
