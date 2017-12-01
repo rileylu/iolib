@@ -14,6 +14,7 @@ public:
 	};
 	struct Context
 	{
+		bool finish_;
 		int id_;
 		PVOID orgin_;
 		PVOID belong_to_;
@@ -24,7 +25,7 @@ public:
 			NEW,
 			OTHER
 		} cmd_;
-		Context() :io_data_(new Per_IO_Data), cmd_(OTHER) {}
+		Context() :finish_(false), io_data_(new Per_IO_Data), cmd_(OTHER) {}
 	};
 	FiberEnvironment(int num = 4);
 	~FiberEnvironment();

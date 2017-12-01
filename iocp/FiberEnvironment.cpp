@@ -48,7 +48,9 @@ void FiberEnvironment::io_fun_()
 				int id = id_++ % td_num_;
 				LeaveCriticalSection(&idcs_);
 				context->id_ = id;
+				context->cmd_ = Context::OTHER;
 			}
+			context->io_data_->bytes_transferred = dwBytes;
 			::EnterCriticalSection(&cs_[context->id_]);
 			running_context_[context->id_].emplace_back(context);
 			empty_[context->id_] = false;
@@ -76,6 +78,11 @@ unsigned __stdcall FiberEnvironment::schedule_next_(PVOID args)
 		empty_[i] = running_context_[i].empty();
 		::LeaveCriticalSection(&cs_[i]);
 		::SwitchToFiber(ctx->orgin_);
+		if (ctx->finish_)
+		{
+			::DeleteFiber(ctx->orgin_);
+			delete ctx;
+		}
 	}
 }
 
@@ -83,6 +90,7 @@ void FiberEnvironment::fun_(PVOID args)
 {
 	Context *context = reinterpret_cast<Context*>(args);
 	context->fun_();
+	context->finish_ = true;
 	::SwitchToFiber(TlsGetValue(tls_));
 }
 
@@ -90,6 +98,7 @@ FiberEnvironment::~FiberEnvironment()
 {
 	iocp_->stop();
 	WaitForMultipleObjects(td_num_, schedule_tds_.data(), TRUE, INFINITE);
+	//stop worker thread
 }
 
 ADDRINFOEX FiberEnvironment::getaddrinfo(PCTSTR ip, PCTSTR port)
@@ -148,6 +157,24 @@ int FiberEnvironment::connect(SOCKET s, sockaddr * addr, int addrlen)
 	setsockopt(s, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0);
 	freeaddrinfo(local);
 	::SwitchToFiber(TlsGetValue(tls_));
+	int seconds;
+	int bytes = sizeof(seconds);
+	int iResult = 0;
+	iResult = getsockopt(s, SOL_SOCKET, SO_CONNECT_TIME, (char*)&seconds, (PINT)&bytes);
+	if (iResult != NO_ERROR)
+	{
+		perror("connect");
+		return -1;
+	}
+	else
+	{
+		if (seconds == 0xFFFFFFFF)
+		{
+			perror("connect");
+			return -1;
+		}
+	}
+
 	return 0;
 }
 
