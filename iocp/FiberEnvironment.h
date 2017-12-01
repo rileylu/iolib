@@ -2,6 +2,7 @@
 #include "IOCP.h"
 #include <memory>
 #include <list>
+#include <vector>
 class FiberEnvironment
 {
 public:
@@ -13,11 +14,17 @@ public:
 	};
 	struct Context
 	{
+		int id_;
 		PVOID orgin_;
 		PVOID belong_to_;
 		std::function<void()> fun_;
 		std::unique_ptr<Per_IO_Data> io_data_;
-		Context() :io_data_(new Per_IO_Data) {}
+		enum Cmd
+		{
+			NEW,
+			OTHER
+		} cmd_;
+		Context() :io_data_(new Per_IO_Data), cmd_(OTHER) {}
 	};
 	FiberEnvironment(int num = 4);
 	~FiberEnvironment();
@@ -42,12 +49,13 @@ private:
 
 private:
 	static IOCP *iocp_;
-	static void* block_context_;
-	HANDLE block_thread_t_;
+	std::vector<HANDLE> schedule_tds_;
 	int td_num_;
-	::CRITICAL_SECTION running_cs_;
-	::CONDITION_VARIABLE running_v_;
-	bool empty_;
-	std::list<Context*> running_list_;
-	static std::list<void*> finish_list_;
+	static DWORD tls_;
+	static std::vector<std::list<Context*>> running_context_;
+	static std::vector<::CRITICAL_SECTION> cs_;
+	static std::vector<::CONDITION_VARIABLE> cv_;
+	static std::vector<bool> empty_;
+	::CRITICAL_SECTION idcs_;
+	int id_;
 };

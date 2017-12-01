@@ -6,7 +6,7 @@ namespace fiber {
 	FiberEnvironment* fiberinv = nullptr;
 	void fiber_init()
 	{
-		fiberinv = Singleton<FiberEnvironment>::get_instance(8);
+		fiberinv = Singleton<FiberEnvironment>::get_instance(4);
 	}
 	ADDRINFOEX getaddrinfo(PCTSTR ip, PCTSTR port)
 	{

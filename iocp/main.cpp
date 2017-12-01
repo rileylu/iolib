@@ -18,14 +18,14 @@ void fun()
 	fn.append(".txt");
 	HANDLE fd = fiber::fiber_open(fn.c_str(), GENERIC_WRITE, CREATE_ALWAYS);
 	res = fiber::fiber_write(fd, buf, res);
-	::closesocket(s);
+	//::closesocket(s);
 	::CloseHandle(fd);
 }
 
 int main()
 {
 	fiber::fiber_init();
-	for (int i = 0; i < 100000; ++i)
+	for (int i = 0; i < 1; ++i)
 		fiber::fiber_create_thread(0, fun);
 	fiber::fiber_destory();
 }
