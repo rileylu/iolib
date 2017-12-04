@@ -4,13 +4,9 @@
 
 namespace fiber {
 	FiberEnvironment* fiberinv = nullptr;
-	void fiber_init()
+	void fiber_init(int num)
 	{
-		fiberinv = Singleton<FiberEnvironment>::get_instance(4);
-	}
-	ADDRINFOEX getaddrinfo(PCTSTR ip, PCTSTR port)
-	{
-		return fiberinv->getaddrinfo(ip, port);
+		fiberinv = Singleton<FiberEnvironment>::get_instance(num);
 	}
 	SOCKET fiber_socket(int af, int type, int protocol)
 	{

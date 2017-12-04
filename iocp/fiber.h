@@ -4,8 +4,8 @@
 
 namespace fiber
 {
-	void fiber_init();
-	ADDRINFOEX getaddrinfo(PCTSTR ip, PCTSTR port);
+	void fiber_init(int num);
+
 	SOCKET fiber_socket(int af, int type, int protocol);
 	int fiber_connect(SOCKET s, sockaddr* addr, int len);
 	int fiber_recv(SOCKET s, void* buf, int len);

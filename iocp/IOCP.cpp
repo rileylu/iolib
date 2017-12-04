@@ -1,19 +1,22 @@
 ﻿#include "IOCP.h"
 
 IOCP::IOCP(Fun f, int num)
-	:iocp_(INVALID_HANDLE_VALUE), io_fun_(f)
+	:iocp_(::CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, num)), io_fun_(f),num_(num)
 {
-	iocp_ = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, NULL, num);
-	for (int i = 0; i < num; ++i)
-	{
-		HANDLE td = (HANDLE)::_beginthreadex(nullptr, 0, &IOCP::fun, &io_fun_, NULL, 0);
-		tds_.push_back(td);
-	}
 }
 
 void IOCP::stop()
 {
 	::WaitForMultipleObjects(tds_.size(), tds_.data(), TRUE, INFINITE);
+}
+
+void IOCP::start()
+{
+	for (int i = 0; i < num_*2 ; ++i)
+	{
+		HANDLE td = (HANDLE)::_beginthreadex(nullptr, 0, &IOCP::fun, &io_fun_, NULL, 0);
+		tds_.push_back(td);
+	}
 }
 
 

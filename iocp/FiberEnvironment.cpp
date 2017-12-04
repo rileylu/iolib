@@ -3,35 +3,18 @@
 #include <algorithm>
 #include <memory>
 
-IOCP* FiberEnvironment::iocp_ = nullptr;
-std::vector<std::list<FiberEnvironment::Context*>> FiberEnvironment::running_context_;
-std::vector<::CRITICAL_SECTION> FiberEnvironment::cs_;
-std::vector<::CONDITION_VARIABLE> FiberEnvironment::cv_;
-std::vector<bool> FiberEnvironment::empty_;
 DWORD FiberEnvironment::tls_ = TlsAlloc();
+DWORD FiberEnvironment::joinable_tls_ = TlsAlloc();
 FiberEnvironment::FiberEnvironment(int num)
-	:td_num_(num), id_(0)
+	:iocp_(new IOCP(std::bind(&FiberEnvironment::io_fun_, this), num)),td_num_(num)
 {
-	cs_.resize(num);
-	cv_.resize(num);
-	empty_.resize(num);
-	for (auto &t : cs_)
-		InitializeCriticalSection(&t);
-	for (auto &t : cv_)
-		InitializeConditionVariable(&t);
-	for (auto &t : empty_)
-		t = true;
-	InitializeCriticalSection(&idcs_);
-	running_context_.resize(td_num_);
-	iocp_ = Singleton<IOCP>::get_instance(std::bind(&FiberEnvironment::io_fun_, this), td_num_);
-	for (int i = 0; i < td_num_; ++i)
-	{
-		schedule_tds_.push_back((HANDLE)::_beginthreadex(nullptr, 0, &FiberEnvironment::schedule_next_, (void*)i, 0, 0));
-	}
+	iocp_->start();
 }
 
 void FiberEnvironment::io_fun_()
 {
+	::TlsSetValue(tls_, ::ConvertThreadToFiber(nullptr));
+	::TlsSetValue(joinable_tls_, new std::list<Context*>);
 	DWORD bytes_transferred;
 	Per_IO_Data *per_io_data = nullptr;
 	Context *context = nullptr;
@@ -42,46 +25,29 @@ void FiberEnvironment::io_fun_()
 		bRet = ::GetQueuedCompletionStatus(iocp_->get_handle(), &dwBytes, (PULONG_PTR)&context, (LPOVERLAPPED*)&per_io_data, WSA_INFINITE);
 		if (bRet)
 		{
-			if (context->cmd_ == FiberEnvironment::Context::NEW)
+			switch (context->cmd_)
 			{
-				EnterCriticalSection(&idcs_);
-				int id = id_++ % td_num_;
-				LeaveCriticalSection(&idcs_);
-				context->id_ = id;
+			case FiberEnvironment::Context::NEW:
 				context->cmd_ = Context::OTHER;
+				::SwitchToFiber(context->orgin_);
+				break;
+			default:
+				context->io_data_->bytes_transferred = dwBytes;
+				::SwitchToFiber(context->orgin_);
+				break;
 			}
-			context->io_data_->bytes_transferred = dwBytes;
-			::EnterCriticalSection(&cs_[context->id_]);
-			running_context_[context->id_].emplace_back(context);
-			empty_[context->id_] = false;
-			::LeaveCriticalSection(&cs_[context->id_]);
-			::WakeConditionVariable(&cv_[context->id_]);
 		}
 		else
 			continue;
-	}
-}
-
-unsigned __stdcall FiberEnvironment::schedule_next_(PVOID args)
-{
-	int i = (int)args;
-	PVOID block_context = ::ConvertThreadToFiber(nullptr);
-	TlsSetValue(tls_, block_context);
-	while (true)
-	{
-		Context *ctx;
-		::EnterCriticalSection(&cs_[i]);
-		while (empty_[i])
-			::SleepConditionVariableCS(&cv_[i], &cs_[i], INFINITE);
-		ctx = running_context_[i].front();
-		running_context_[i].pop_front();
-		empty_[i] = running_context_[i].empty();
-		::LeaveCriticalSection(&cs_[i]);
-		::SwitchToFiber(ctx->orgin_);
-		if (ctx->finish_)
+		std::list<Context*> *l =(std::list<Context*>*)::TlsGetValue(joinable_tls_);
+		if (!l->empty())
 		{
-			::DeleteFiber(ctx->orgin_);
-			delete ctx;
+			for (auto* c : *l)
+			{
+				::DeleteFiber(c->orgin_);
+				delete c;
+			}
+			l->clear();
 		}
 	}
 }
@@ -90,30 +56,14 @@ void FiberEnvironment::fun_(PVOID args)
 {
 	Context *context = reinterpret_cast<Context*>(args);
 	context->fun_();
-	context->finish_ = true;
+	std::list<Context*> *l =(std::list<Context*>*)::TlsGetValue(joinable_tls_);
+	l->push_back(context);
 	::SwitchToFiber(TlsGetValue(tls_));
 }
 
 FiberEnvironment::~FiberEnvironment()
 {
 	iocp_->stop();
-	WaitForMultipleObjects(td_num_, schedule_tds_.data(), TRUE, INFINITE);
-	//stop worker thread
-}
-
-ADDRINFOEX FiberEnvironment::getaddrinfo(PCTSTR ip, PCTSTR port)
-{
-	Context* context = reinterpret_cast<Context*>(::GetFiberData());
-	ADDRINFOEX hints, *result;
-	ZeroMemory(&hints, sizeof(ADDRINFOEX));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-	ZeroMemory(&context->io_data_->overlapped_, sizeof(OVERLAPPED));
-	int ret = ::GetAddrInfoEx(ip, port, NS_DNS, NULL, &hints, &result, NULL, (LPOVERLAPPED)context->io_data_.get(), NULL, NULL);
-	::SwitchToFiber(TlsGetValue(tls_));
-	ADDRINFOEX addr = *result;
-	FreeAddrInfoEx(result);
-	return addr;
 }
 
 SOCKET FiberEnvironment::socket(int af, int type, int protocol)
@@ -123,7 +73,7 @@ SOCKET FiberEnvironment::socket(int af, int type, int protocol)
 	bool value = TRUE;
 	setsockopt(s, IPPROTO_TCP, TCP_NODELAY, (char*)&value, sizeof(bool));
 	setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char*)&value, sizeof(bool));
-	::CreateIoCompletionPort((HANDLE)s, Singleton<IOCP>::get()->get_handle(), (ULONG_PTR)context, 0);
+	::CreateIoCompletionPort((HANDLE)s, iocp_->get_handle(), (ULONG_PTR)context, 0);
 	return s;
 }
 
@@ -153,9 +103,11 @@ int FiberEnvironment::connect(SOCKET s, sockaddr * addr, int addrlen)
 	context->io_data_->wsabuf_.buf = buf.get();
 	context->io_data_->wsabuf_.len = 1024;
 	ZeroMemory(&context->io_data_->overlapped_, sizeof(OVERLAPPED));
+	//lock context
 	connectEx(s, addr, addrlen, nullptr, 0, &dwBytes, reinterpret_cast<LPOVERLAPPED>(context->io_data_.get()));
 	setsockopt(s, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0);
 	freeaddrinfo(local);
+	//release context
 	::SwitchToFiber(TlsGetValue(tls_));
 	int seconds;
 	int bytes = sizeof(seconds);
@@ -234,7 +186,6 @@ int FiberEnvironment::write(HANDLE hd, const void * buf, int len)
 void * FiberEnvironment::create_thread(int stacksize, std::function<void()> fun)
 {
 	Context *context = new Context;
-	context->belong_to_ = this;
 	context->fun_ = fun;
 	context->cmd_ = Context::NEW;
 	context->orgin_ = ::CreateFiber(stacksize, &FiberEnvironment::fun_, context);
