@@ -6,7 +6,7 @@
 DWORD FiberEnvironment::tls_ = TlsAlloc();
 DWORD FiberEnvironment::joinable_tls_ = TlsAlloc();
 FiberEnvironment::FiberEnvironment(int num)
-	:iocp_(new IOCP(std::bind(&FiberEnvironment::io_fun_, this), num)),td_num_(num)
+	:iocp_(new IOCP(std::bind(&FiberEnvironment::io_fun_, this), num)), td_num_(num)
 {
 	iocp_->start();
 }
@@ -39,7 +39,7 @@ void FiberEnvironment::io_fun_()
 		}
 		else
 			continue;
-		std::list<Context*> *l =(std::list<Context*>*)::TlsGetValue(joinable_tls_);
+		std::list<Context*> *l = (std::list<Context*>*)::TlsGetValue(joinable_tls_);
 		if (!l->empty())
 		{
 			for (auto* c : *l)
@@ -56,7 +56,7 @@ void FiberEnvironment::fun_(PVOID args)
 {
 	Context *context = reinterpret_cast<Context*>(args);
 	context->fun_();
-	std::list<Context*> *l =(std::list<Context*>*)::TlsGetValue(joinable_tls_);
+	std::list<Context*> *l = (std::list<Context*>*)::TlsGetValue(joinable_tls_);
 	l->push_back(context);
 	::SwitchToFiber(TlsGetValue(tls_));
 }

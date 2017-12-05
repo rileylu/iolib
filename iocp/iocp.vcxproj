@@ -113,16 +113,26 @@
   <ItemGroup>
     <ClCompile Include="fiber.cpp" />
     <ClCompile Include="FiberEnvironment.cpp" />
+    <ClCompile Include="fiberenv_t.cpp" />
     <ClCompile Include="IOCP.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="net.cpp" />
+    <ClCompile Include="schedule_t.cpp" />
+    <ClCompile Include="socket_t.cpp" />
+    <ClCompile Include="thread_t.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="common.h" />
     <ClInclude Include="fiber.h" />
     <ClInclude Include="FiberEnvironment.h" />
+    <ClInclude Include="fiberenv_t.h" />
     <ClInclude Include="IOCP.h" />
+    <ClInclude Include="istream_t.h" />
     <ClInclude Include="net.h" />
+    <ClInclude Include="schedule_t.h" />
     <ClInclude Include="singleton.h" />
+    <ClInclude Include="socket_t.h" />
+    <ClInclude Include="thread_t.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
