@@ -1,10 +1,11 @@
 #include "socket_t.h"
-#include "fiberenv_t.h"
+#include "schedule_t.h"
 
-socket_t::socket_t(fiberenv_t& env, int af, int type, int protocol)
-	:env_(env), iodata_{ 0 }
+socket_t::socket_t(int af, int type, int protocol)
+	:env_(schedule_t::get_sche())
 	, sock_(INVALID_SOCKET)
 {
+	ZeroMemory(&iodata_, sizeof(iodata_));
 	sock_ = ::WSASocketW(af, type, protocol, NULL, 0, WSA_FLAG_OVERLAPPED);
 	bool v = true;
 	::setsockopt(sock_, SOL_SOCKET, SO_REUSEADDR, (char*)&v, sizeof(v));
@@ -13,6 +14,7 @@ socket_t::socket_t(fiberenv_t& env, int af, int type, int protocol)
 	{
 		perror("socket_t constructor");
 	}
+	::CreateIoCompletionPort((HANDLE)sock_, env_->get_iocp_handle(), (ULONG_PTR)GetCurrentFiber(), 0);
 }
 
 int socket_t::connect(sockaddr * addr, int addr_len)
@@ -35,8 +37,12 @@ int socket_t::connect(sockaddr * addr, int addr_len)
 		, NULL
 		, NULL);
 	ZeroMemory(&iodata_, sizeof(iodata_));
+	::bind(sock_, (sockaddr*)&local, sizeof(local));
+	char c;
+	iodata_.wsaBuf_.buf = &c;
+	iodata_.wsaBuf_.len = 1;
 	connectEx(sock_, addr, addr_len, NULL, 0, &dwBytes, (LPOVERLAPPED)&iodata_.overlapped_);
-	//env_.swtich_context();
+	env_->switch_context(::GetCurrentFiber());
 	::setsockopt(sock_, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0);
 	int seconds, bytes;
 	bytes = sizeof(seconds);
@@ -62,8 +68,9 @@ int socket_t::read(void * buf, int len)
 	ZeroMemory(&iodata_, sizeof(iodata_));
 	iodata_.wsaBuf_.buf = (char*)buf;
 	iodata_.wsaBuf_.len = len;
-	int res = ::WSARecv(sock_, &iodata_.wsaBuf_, 1, NULL, 0, (LPOVERLAPPED)&iodata_, NULL);
-	//env_.switch_context();
+	DWORD flags = 0;
+	int res = ::WSARecv(sock_, &iodata_.wsaBuf_, 1, 0, &flags, (LPOVERLAPPED)&iodata_.overlapped_, NULL);
+	env_->switch_context(::GetCurrentFiber());
 	if (res < 0 && GetLastError() != WSA_IO_PENDING)
 	{
 		perror("socket_t read");
@@ -77,7 +84,7 @@ int socket_t::write(const void * buf, int len)
 	iodata_.wsaBuf_.buf = (char*)buf;
 	iodata_.wsaBuf_.len = len;
 	int res = ::WSASend(sock_, &iodata_.wsaBuf_, 1, NULL, 0, (LPOVERLAPPED)&iodata_, NULL);
-	//env_.switch_context();
+	env_->switch_context(::GetCurrentFiber());
 	if (res < 0 && GetLastError() != WSA_IO_PENDING)
 	{
 		perror("socket_t write");

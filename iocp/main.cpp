@@ -4,6 +4,7 @@
 
 #include "schedule_t.h"
 #include "thread_t.h"
+#include "socket_t.h"
 #include <iostream>
 
 //void fun()
@@ -35,9 +36,20 @@ int main()
 	//for (int i = 0; i < 1; ++i)
 	//	fiber::fiber_create_thread(0, fun);
 	//fiber::fiber_destory();
-	auto fun = [] {
-		std::cout << "Hello world" << std::endl;
-	};
 	schedule_t sche;
-	thread_t t(sche, fun);
+	auto fun = [] {
+		socket_t s(AF_INET, SOCK_STREAM, 0);
+		SOCKADDR_IN addr;
+		ZeroMemory(&addr, sizeof(addr));
+		addr.sin_family = AF_INET;
+		::InetPton(AF_INET, L"127.0.0.1", &addr.sin_addr.S_un.S_addr);
+		addr.sin_port = htons(21);
+		s.connect((sockaddr*)&addr, sizeof(addr));
+		char buf[1024];
+		ZeroMemory(buf, sizeof(buf));
+		int res = s.read(buf, sizeof(buf));
+
+		std::cout << buf << std::endl;
+	};
+	thread_t t(fun);
 }

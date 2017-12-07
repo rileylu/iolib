@@ -10,8 +10,9 @@ class thread_t
 {
 public:
 	using context_t = void*;
-	thread_t(schedule_t& sche, const std::function<void()>& fun);
-	thread_t(schedule_t& sche, std::function<void()>&& fun);
+	thread_t() = default;
+	thread_t(const std::function<void()>& fun);
+	thread_t(std::function<void()>&& fun);
 	void join();
 	void detach();
 
@@ -24,11 +25,10 @@ public:
 private:
 	static void fiber_proc_(void* param);
 	friend class schedule_t;
+	schedule_t *sche_;
 	int id_;
 	bool is_finished_;
-	schedule_t &sche_;
 	std::function<void()> start_;
-	std::list<thread_t>::iterator pos_;
 	context_t ctx_;
 };
 
@@ -42,7 +42,6 @@ inline thread_t::thread_t(thread_t && other) noexcept
 	, is_finished_(other.is_finished_)
 	, sche_(other.sche_)
 	, start_(std::move(other.start_))
-	, pos_(other.pos_)
 	, ctx_(other.ctx_)
 {
 }
@@ -55,7 +54,6 @@ inline thread_t& thread_t::operator=(thread_t && other) noexcept
 		is_finished_ = other.is_finished_;
 		std::ref(sche_) = other.sche_;
 		start_ = std::move(other.start_);
-		pos_ = other.pos_;
 		ctx_ = other.ctx_;
 	}
 	return *this;
