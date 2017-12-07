@@ -30,16 +30,20 @@ void thread_t::detach()
 }
 
 thread_t::thread_t(thread_t && other)
-	:sche_(other.sche_)
+	:is_finished_(other.is_finished_)
+	, sche_(other.sche_)
 	, start_(std::move(other.start_))
+	, pos_(other.pos_)
 	, ctx_(other.ctx_)
 {
 }
 
 thread_t & thread_t::operator=(thread_t && other)
 {
+	is_finished_ = other.is_finished_;
 	sche_ = other.sche_;
 	start_ = std::move(other.start_);
+	pos_ = other.pos_;
 	ctx_ = other.ctx_;
 	return *this;
 }
@@ -54,5 +58,5 @@ void thread_t::fiber_proc_(void* param)
 	thread_t *td_ptr = reinterpret_cast<thread_t*>(param);
 	td_ptr->start_();
 	td_ptr->is_finished_ = true;
-	td_ptr->sche_.switch_context(std::move(*td_ptr));
+	td_ptr->sche_.add_to_idle(std::move(*td_ptr));
 }

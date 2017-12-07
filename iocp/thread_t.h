@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include "noncopyable.h"
+#include <list>
 class schedule_t;
 class thread_t :noncopyable
 {
@@ -22,6 +23,7 @@ private:
 	bool is_finished_;
 	schedule_t &sche_;
 	std::function<void()> start_;
+	std::list<thread_t>::iterator pos_;
 	context_t ctx_;
 };
 
