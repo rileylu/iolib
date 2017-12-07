@@ -15,6 +15,7 @@ schedule_t::schedule_t()
 	::TlsSetValue(tls_, this);
 	iocp_ = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 1);
 	ctx_ = ::ConvertThreadToFiber(nullptr);
+	thread_pools_[0] = thread_t(ctx_);
 }
 
 
@@ -25,14 +26,10 @@ schedule_t::~schedule_t()
 
 void schedule_t::switch_context(void* p)
 {
-	auto pos = std::find_if(running_list_.begin(), running_list_.end(), [p, this](int id) {
-		return thread_pools_[id].ctx_ == p;
+	auto pos = std::find_if(thread_pools_.begin(), thread_pools_.end(), [p, this](std::pair<const int, thread_t>& tp) {
+		return tp.second.ctx_ == p;
 	});
-	if (pos == running_list_.end())
-		perror("switch_context");
-	int id = *pos;
-	running_list_.erase(pos);
-	io_list_.push_back(id);
+	io_list_.push_back(pos->second.get_id());
 	::SwitchToFiber(ctx_);
 }
 
@@ -44,6 +41,10 @@ void schedule_t::add_to_running(int id)
 void schedule_t::add_to_io(int id)
 {
 	io_list_.push_back(id);
+}
+void schedule_t::add_to_wait(int id)
+{
+	wait_list_.push_back(id);
 }
 
 void schedule_t::add_to_io(void * p)
@@ -73,6 +74,9 @@ void schedule_t::schedule()
 		if (io_list_.size() > 0)
 			idle_wait();
 		std::list<int> tmp = std::move(running_list_);
+		for (auto p = tmp.cbegin(); p != tmp.cend(); ++p)
+			::SwitchToFiber(thread_pools_[*p].ctx_);
+		tmp = std::move(wait_list_);
 		for (auto p = tmp.cbegin(); p != tmp.cend(); ++p)
 			::SwitchToFiber(thread_pools_[*p].ctx_);
 	}

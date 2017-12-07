@@ -12,7 +12,8 @@ public:
 
 	void add_to_running(int id);
 	void add_to_io(int id);
-	void add_to_io(void *p);
+	void add_to_io(void* p);
+	void add_to_wait(int id);
 	void add_to_idle(int id);
 
 	void switch_context(void* p);
@@ -33,7 +34,8 @@ private:
 	std::list<int> running_list_;
 	std::list<int> io_list_;
 	std::list<int> idle_list_;
-	std::map<int, thread_t> thread_pools_;
+	std::list<int> wait_list_;
+	std::map<const int, thread_t> thread_pools_;
 	context_t ctx_;
 	static DWORD tls_;
 };

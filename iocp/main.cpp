@@ -48,8 +48,8 @@ int main()
 		char buf[1024];
 		ZeroMemory(buf, sizeof(buf));
 		int res = s.read(buf, sizeof(buf));
-
 		std::cout << buf << std::endl;
 	};
 	thread_t t(fun);
+	t.join();
 }

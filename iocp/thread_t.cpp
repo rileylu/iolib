@@ -1,6 +1,17 @@
 #include "thread_t.h"
 #include "schedule_t.h"
 #include <Windows.h>
+#include <algorithm>
+
+thread_t::thread_t(void* p)
+	:sche_(schedule_t::get_sche())
+	, id_(0)
+	, start_([] {})
+	, is_finished_(false)
+	, ctx_(p)
+{}
+
+
 
 thread_t::thread_t(const std::function<void()>& fun)
 	: sche_(schedule_t::get_sche())
@@ -28,6 +39,14 @@ thread_t::thread_t(std::function<void()>&& fun)
 
 void thread_t::join()
 {
+	while (!is_finished_)
+	{
+		auto pos = std::find_if(sche_->thread_pools_.cbegin(), sche_->thread_pools_.cend(), [](const std::pair<const int, thread_t>& tp) {
+			return tp.second.ctx_ == GetCurrentFiber();
+		});
+		sche_->add_to_wait(pos->first);
+		::SwitchToFiber(sche_->ctx_);
+	}
 	//while (!is_finished_)
 	//	sche_.switch_context(std::move(*this));
 }
@@ -42,9 +61,9 @@ void thread_t::fiber_proc_(void* param)
 	sche->thread_pools_[id] = std::move(*td_ptr);
 	sche->add_to_running(id);
 	sche->thread_pools_[id].start_();
+	sche->thread_pools_[id].is_finished_ = true;
 	sche->thread_count_--;
 	sche->add_to_idle(id);
-	sche->running_list_.erase(std::find(sche->running_list_.cbegin(), sche->running_list_.cend(), id));
 	::SwitchToFiber(sche->ctx_);
 }
 
