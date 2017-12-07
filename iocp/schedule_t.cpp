@@ -5,6 +5,7 @@
 
 schedule_t::schedule_t()
 	:thread_count_(0)
+	, thread_id_(0)
 	, iocp_(INVALID_HANDLE_VALUE)
 	, ctx_(nullptr)
 {
@@ -24,23 +25,23 @@ void schedule_t::switch_context(void* p)
 	});
 	if (pos == io_list_.end())
 		perror("switch_context");
-	add_to_running(std::move(*pos));
+	add_to_io(std::move(*pos));
 	::SwitchToFiber(ctx_);
 }
 
-void schedule_t::add_to_running(thread_t && td)
+void schedule_t::add_to_running(thread_t&&  td)
 {
 	running_list_.push_back(std::move(td));
 }
 
-void schedule_t::add_to_io(thread_t && td)
+void schedule_t::add_to_io(thread_t&& td)
 {
 
 	auto pos = io_list_.insert(io_list_.end(), std::move(td));
 	pos->pos_ = pos;
 }
 
-void schedule_t::add_to_idle(thread_t && td)
+void schedule_t::add_to_idle(thread_t&& td)
 {
 	idle_list_.push_back(std::move(td));
 }
