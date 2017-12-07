@@ -9,10 +9,9 @@ thread_t::thread_t(schedule_t& env, const std::function<void()>& fun)
 	, is_finished_(false)
 	, ctx_(nullptr)
 {
-	ctx_ = ::CreateFiber(0, &thread_t::fiber_proc_, this);
-	sche_.add_to_running(std::move(*this));
 	sche_.thread_count_++;
-	::SwitchToFiber(sche_.ctx_);
+	ctx_ = ::CreateFiber(0, &thread_t::fiber_proc_, this);
+	::SwitchToFiber(ctx_);
 }
 
 thread_t::thread_t(schedule_t& env, std::function<void()>&& fun)
@@ -22,10 +21,9 @@ thread_t::thread_t(schedule_t& env, std::function<void()>&& fun)
 	, is_finished_(false)
 	, ctx_(nullptr)
 {
-	ctx_ = ::CreateFiber(0, &thread_t::fiber_proc_, this);
-	sche_.add_to_running(std::move(*this));
 	sche_.thread_count_++;
-	::SwitchToFiber(sche_.ctx_);
+	ctx_ = ::CreateFiber(0, &thread_t::fiber_proc_, this);
+	::SwitchToFiber(ctx_);
 }
 
 void thread_t::join()
@@ -39,8 +37,13 @@ void thread_t::detach()
 void thread_t::fiber_proc_(void* param)
 {
 	thread_t *td_ptr = reinterpret_cast<thread_t*>(param);
-	td_ptr->start_();
-	td_ptr->is_finished_ = true;
-	td_ptr->sche_.add_to_idle(std::move(*td_ptr));
+	auto p = td_ptr->sche_.add_to_running(std::move(*td_ptr));
+	p->start_();
+	p->is_finished_ = true;
+	p->sche_.thread_count_--;
+	auto* ctx = p->sche_.ctx_;
+	p->sche_.add_to_idle(std::move(*p));
+	p->sche_.running_list_.erase(p);
+	::SwitchToFiber(ctx);
 }
 

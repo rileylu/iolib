@@ -9,7 +9,7 @@ public:
 	schedule_t();
 	~schedule_t();
 
-	void add_to_running(thread_t&&  td);
+	std::list<thread_t>::iterator add_to_running(thread_t&&  td);
 	void add_to_io(thread_t&& td);
 	void add_to_idle(thread_t&& td);
 

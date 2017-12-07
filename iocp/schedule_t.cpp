@@ -16,6 +16,7 @@ schedule_t::schedule_t()
 
 schedule_t::~schedule_t()
 {
+	schedule();
 }
 
 void schedule_t::switch_context(void* p)
@@ -29,9 +30,10 @@ void schedule_t::switch_context(void* p)
 	::SwitchToFiber(ctx_);
 }
 
-void schedule_t::add_to_running(thread_t&&  td)
+std::list<thread_t>::iterator schedule_t::add_to_running(thread_t&&  td)
 {
-	running_list_.push_back(std::move(td));
+	auto pos = running_list_.insert(running_list_.end(), std::move(td));
+	return pos;
 }
 
 void schedule_t::add_to_io(thread_t&& td)

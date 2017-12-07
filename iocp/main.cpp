@@ -40,5 +40,4 @@ int main()
 	};
 	schedule_t sche;
 	thread_t t(sche, fun);
-	getchar();
 }

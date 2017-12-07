@@ -38,7 +38,8 @@ inline int thread_t::get_id() const
 }
 
 inline thread_t::thread_t(thread_t && other) noexcept
-	:is_finished_(other.is_finished_)
+	:id_(other.id_)
+	, is_finished_(other.is_finished_)
 	, sche_(other.sche_)
 	, start_(std::move(other.start_))
 	, pos_(other.pos_)
@@ -50,6 +51,7 @@ inline thread_t& thread_t::operator=(thread_t && other) noexcept
 {
 	if (this != &other)
 	{
+		id_ = other.id_;
 		is_finished_ = other.is_finished_;
 		std::ref(sche_) = other.sche_;
 		start_ = std::move(other.start_);
