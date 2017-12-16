@@ -1,24 +1,23 @@
 ﻿#pragma once
 
 template<typename T>
-class Singleton
+class singleton
 {
 public:
-	~Singleton() = default;
+	~singleton() = default;
 	template<typename...Args>
 	static T* get_instance(Args&&... args);
 	static T* get();
-
-	Singleton(const Singleton&) = delete;
-	Singleton& operator=(const Singleton&) = delete;
+	singleton(const singleton&) = delete;
+	singleton& operator=(const singleton&) = delete;
 private:
-	Singleton() = default;
+	singleton() = default;
 	static T* instance_;
 };
 
 template<typename T>
 template<typename ...Args>
-inline T * Singleton<T>::get_instance(Args && ...args)
+inline T * singleton<T>::get_instance(Args && ...args)
 {
 	if (instance_ == nullptr)
 		instance_ = new T(std::forward<Args>(args)...);
@@ -26,10 +25,10 @@ inline T * Singleton<T>::get_instance(Args && ...args)
 }
 
 template<typename T>
-inline T * Singleton<T>::get()
+inline T * singleton<T>::get()
 {
 	return instance_;
 }
 
 template<typename T>
-T* Singleton<T>::instance_ = nullptr;
+T* singleton<T>::instance_ = nullptr;
