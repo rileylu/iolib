@@ -23,6 +23,11 @@ namespace iolib
 		return impl_->write(buf, len);
 	}
 
+	int socket::accept(SOCKET listen)
+	{
+		return impl_->accept(listen);
+	}
+
 
 	socket::socket_t::socket_t(int af, int type, int protocol)
 		: sche_(*(singleton<schedule>::get_instance()))
@@ -115,6 +120,10 @@ namespace iolib
 		sche_.add_to_io(::GetCurrentFiber(), sche_.get_thread(::GetCurrentFiber()).get());
 		SwitchToFiber(sche_.get_ctx());
 		return iodata_.bytes_transferred;
+	}
+
+	int socket::socket_t::accept(SOCKET listen)
+	{
 	}
 
 	socket::socket_t::~socket_t()

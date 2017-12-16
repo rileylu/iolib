@@ -36,6 +36,7 @@ namespace iolib
 		int connect(sockaddr* addr, int addr_len);
 		int read(void* buf, int len);
 		int write(const void*buf, int len);
+		int accept(SOCKET listen);
 		class socket_t
 			:noncopyable
 		{
@@ -44,6 +45,7 @@ namespace iolib
 			int connect(sockaddr* addr, int addr_len);
 			int read(void* buf, int len);
 			int write(const void*buf, int len);
+			int accept(SOCKET listen);
 			~socket_t();
 		private:
 			friend class socket;
