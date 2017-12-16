@@ -37,14 +37,28 @@ int main()
 		SOCKADDR_IN addr;
 		ZeroMemory(&addr, sizeof(addr));
 		addr.sin_family = AF_INET;
-		InetPton(AF_INET, L"10.211.55.3", &addr.sin_addr.S_un.S_addr);
-		addr.sin_port = htons(21);
+		//InetPton(AF_INET, L"10.211.55.3", &addr.sin_addr.S_un.S_addr);
+		//addr.sin_port = htons(21);
+		InetPton(AF_INET, L"10.211.55.4", &addr.sin_addr.S_un.S_addr);
+		addr.sin_port = htons(80);
 		int res = t.connect((SOCKADDR*)&addr, sizeof(addr));
-		char buf[1024];
-		res = t.read(buf, 1024);
+		if (res < 0)
+		{
+			perror("connect");
+			return;
+		}
+
+		std::string cmd = "GET /\r\n";
+		res = t.write(cmd.c_str(), cmd.size());
+		if (res < 0)
+			return;
+		char buf[4096];
+		res = t.read(buf, 4096);
+		if (res < 0)
+			return;
 		buf[res] = '\0';
 		std::string fn(std::to_string(reinterpret_cast<long long>(GetCurrentFiber())));
-		fn.append(".txt");
+		fn.append(".html");
 		iolib::file f;
 		f.open(fn.c_str(), GENERIC_WRITE, CREATE_ALWAYS);
 		f.write(buf, res);

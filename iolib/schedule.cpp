@@ -51,10 +51,6 @@ unsigned schedule::io_workers_(void * p)
 			WakeConditionVariable(&sche->cv_);
 			LeaveCriticalSection(&sche->cs_);
 		}
-		else
-		{
-			continue;
-		}
 	}
 	return 0;
 }
@@ -72,9 +68,10 @@ void schedule::run()
 		}
 		if (!io_list_.empty())
 		{
+			int res = -1;
 			EnterCriticalSection(&cs_);
-			while (tasks_.empty() && td_count_ > 0)
-				::SleepConditionVariableCS(&cv_, &cs_, 5000000);
+			while (tasks_.empty() && td_count_ > 0 && res != 0)
+				res = ::SleepConditionVariableCS(&cv_, &cs_, 5000);
 			if (td_count_ == 0)
 			{
 				LeaveCriticalSection(&cs_);
@@ -83,7 +80,6 @@ void schedule::run()
 			std::list<thread::thread_t*> tmp = std::move(tasks_);
 			LeaveCriticalSection(&cs_);
 			std::for_each(tmp.cbegin(), tmp.cend(), [this](const thread::thread_t* t) {
-				//io_list_.erase(std::find(io_list_.cbegin(), io_list_.cend(), t->ctx_));
 				io_list_.erase(t->ctx_);
 				add_to_running(t->ctx_);
 			});
@@ -91,7 +87,6 @@ void schedule::run()
 		//really slow
 		std::list<PVOID> idle = std::move(idle_list_);
 		std::for_each(idle.cbegin(), idle.cend(), [this](PVOID id) {
-			//::DeleteFiber(all_thread_[id]->ctx_);
 			all_thread_.erase(id);
 			--td_count_;
 		});

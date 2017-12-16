@@ -64,7 +64,9 @@ namespace iolib
 		char c;
 		iodata_.wsabuf_.buf = &c;
 		iodata_.wsabuf_.len = 1;
-		connectEx(sock_, addr, addr_len, NULL, 0, &dwBytes, (LPOVERLAPPED)&iodata_);
+		BOOL result = connectEx(sock_, addr, addr_len, NULL, 0, &dwBytes, (LPOVERLAPPED)&iodata_);
+		if (!result&&WSAGetLastError() != WSA_IO_PENDING)
+			return -1;
 		sche_.add_to_io(::GetCurrentFiber(), sche_.get_thread(::GetCurrentFiber()).get());
 		::SwitchToFiber(sche_.get_ctx());
 		::setsockopt(sock_, SOL_SOCKET, SO_UPDATE_CONNECT_CONTEXT, NULL, 0);
@@ -76,13 +78,10 @@ namespace iolib
 			perror("socket_t connect");
 			return -1;
 		}
-		else
+		if (seconds == 0xffffffff)
 		{
-			if (seconds == 0xffffffff)
-			{
-				perror("socket_t connect");
-				return -1;
-			}
+			perror("socket_t connect");
+			return -1;
 		}
 		return 0;
 	}
@@ -94,12 +93,12 @@ namespace iolib
 		iodata_.wsabuf_.len = len;
 		DWORD flags = 0;
 		int res = ::WSARecv(sock_, &iodata_.wsabuf_, 1, 0, &flags, (LPOVERLAPPED)&iodata_, NULL);
+		if (res == SOCKET_ERROR && GetLastError() != WSA_IO_PENDING)
+		{
+			return -1;
+		}
 		sche_.add_to_io(::GetCurrentFiber(), sche_.get_thread(::GetCurrentFiber()).get());
 		SwitchToFiber(sche_.get_ctx());
-		if (res < 0 && GetLastError() != WSA_IO_PENDING)
-		{
-			perror("socket_t read");
-		}
 		return iodata_.bytes_transferred;
 	}
 
@@ -109,6 +108,10 @@ namespace iolib
 		iodata_.wsabuf_.buf = (char*)buf;
 		iodata_.wsabuf_.len = len;
 		int res = WSASend(sock_, &iodata_.wsabuf_, 1, 0, 0, &iodata_, nullptr);
+		if (res == SOCKET_ERROR && GetLastError() != WSA_IO_PENDING)
+		{
+			return -1;
+		}
 		sche_.add_to_io(::GetCurrentFiber(), sche_.get_thread(::GetCurrentFiber()).get());
 		SwitchToFiber(sche_.get_ctx());
 		return iodata_.bytes_transferred;

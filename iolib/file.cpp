@@ -51,7 +51,9 @@ namespace iolib
 		ZeroMemory(&iodata_, sizeof(iodata_));
 		iodata_.wsabuf_.buf = (char*)buf;
 		iodata_.wsabuf_.len = len;
-		int ret = ReadFile(fd_, buf, len, NULL, &iodata_);
+		BOOL ret = ReadFile(fd_, buf, len, NULL, &iodata_);
+		if (!ret&&GetLastError() != ERROR_IO_PENDING)
+			return -1;
 		sche_.add_to_io(::GetCurrentFiber(), sche_.get_thread(::GetCurrentFiber()).get());
 		::SwitchToFiber(sche_.get_ctx());
 		return iodata_.bytes_transferred;
@@ -62,7 +64,9 @@ namespace iolib
 		ZeroMemory(&iodata_, sizeof(iodata_));
 		iodata_.wsabuf_.buf = (char*)buf;
 		iodata_.wsabuf_.len = len;
-		int ret = WriteFile(fd_, buf, len, NULL, &iodata_);
+		BOOL ret = WriteFile(fd_, buf, len, NULL, &iodata_);
+		if (!ret&&GetLastError() != ERROR_IO_PENDING)
+			return -1;
 		sche_.add_to_io(::GetCurrentFiber(), sche_.get_thread(::GetCurrentFiber()).get());
 		::SwitchToFiber(sche_.get_ctx());
 		return iodata_.bytes_transferred;
