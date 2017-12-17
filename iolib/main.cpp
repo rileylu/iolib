@@ -64,7 +64,7 @@ int main()
 		f.write(buf, res);
 	};
 	std::vector<thread> tds;
-	for (int i = 0; i < 10000; ++i)
+	for (int i = 0; i < 1000; ++i)
 		tds.emplace_back(fun);
 	std::for_each(tds.begin(), tds.end(), [](thread& td)
 	{

@@ -3,7 +3,8 @@
 #include "thread.h"
 #include <vector>
 #include <list>
-#include <map>
+//#include <map>
+#include <unordered_map>
 #include <memory>
 #include <algorithm>
 class schedule
@@ -81,8 +82,8 @@ private:
 	std::list<PVOID> running_list_;
 	//std::list<PVOID> io_list_;
 	std::list<PVOID> idle_list_;
-	std::map<PVOID, thread::thread_t*> io_list_;
-	std::map<PVOID, std::shared_ptr<thread::thread_t>> all_thread_;
+	std::unordered_map<PVOID, thread::thread_t*> io_list_;
+	std::unordered_map<PVOID, std::shared_ptr<thread::thread_t>> all_thread_;
 	io_data term_;
 	void* ctx_;
 };

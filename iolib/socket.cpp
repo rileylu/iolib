@@ -124,6 +124,7 @@ namespace iolib
 
 	int socket::socket_t::accept(SOCKET listen)
 	{
+		return 0;
 	}
 
 	socket::socket_t::~socket_t()
